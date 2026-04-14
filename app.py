@@ -46,23 +46,26 @@ def extract_code(text):
     if m:
         return m.group(1).strip()
 
-    # === TRSF E-BANKING CR → ambil 3 kata terakhir sebagai nama ===
+    # === TRSF E-BANKING CR: scan ALLCAPS dari belakang setelah nominal ===
     if re.search(r'TRSF E-BANKING CR', upper):
-        cleaned = re.sub(r'\d+/[A-Z]+/\S+', '', t, flags=re.IGNORECASE)  # buang kode transaksi
-        cleaned = re.sub(r'TRSF E-BANKING CR', '', cleaned, flags=re.IGNORECASE)
-        cleaned = re.sub(r'\b\d[\d,.]+\b', '', cleaned)  # buang nominal
-        cleaned = cleaned.strip()
-        words = [w for w in cleaned.split() if w]
-        if not words:
-            return "N/A"
-        name = " ".join(words[-3:]) if len(words) >= 3 else " ".join(words)
-        if len(name.split()) == 1 and name.isalpha():
-            return "UNIQUE:" + name
-        return name
-
+        # Ambil semua setelah nominal (angka dengan desimal)
+        m = re.search(r'[\d,]+\.\d+\s+(.*)', t)
+        if m:
+            after_nominal = m.group(1).strip()
+            # Scan dari belakang, ambil kata yang semua huruf kapital
+            words = after_nominal.split()
+            name_words = []
+            for w in reversed(words):
+                if w.isupper() and w.isalpha():
+                    name_words.insert(0, w)
+                else:
+                    break
+            if name_words:
+                return " ".join(name_words)
+        return "N/A"
     # === BI-FAST CR TRANSFER → ambil nama setelah DR + angka ===
-    if "BI-FAST CR TRANSFER" in upper:
-        m = re.search(r'BI-FAST CR TRANSFER\s+DR\s+\d+\s+(.*)', t, re.IGNORECASE)
+    if "BI-FAST CR" in upper:
+        m = re.search(r'BI-FAST CR\s+\S+\s+DR\s+\d+\s+(.*)', t, re.IGNORECASE)
         if m:
             name = m.group(1).strip()
             if len(name.split()) == 1 and name.isalpha():
