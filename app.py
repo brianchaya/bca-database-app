@@ -48,16 +48,16 @@ def extract_code(text):
 
     # === TRSF E-BANKING CR: scan ALLCAPS dari belakang setelah nominal ===
     if re.search(r'TRSF E-BANKING CR', upper):
-        # Ambil semua setelah nominal (angka dengan desimal)
         m = re.search(r'[\d,]+\.\d+\s+(.*)', t)
         if m:
             after_nominal = m.group(1).strip()
-            # Scan dari belakang, ambil kata yang semua huruf kapital
             words = after_nominal.split()
             name_words = []
             for w in reversed(words):
                 if w.isupper() and w.isalpha():
                     name_words.insert(0, w)
+                    if len(name_words) >= 4:  # max 4 kata nama
+                        break
                 else:
                     break
             if name_words:
@@ -68,9 +68,7 @@ def extract_code(text):
         m = re.search(r'BI-FAST CR\s+\S+\s+DR\s+\d+\s+(.*)', t, re.IGNORECASE)
         if m:
             name = m.group(1).strip()
-            if len(name.split()) == 1 and name.isalpha():
-                return "UNIQUE:" + name
-            return name
+            return name if name else "N/A"
         return "N/A"
 
     # === SWITCHING CR + TRF ===
@@ -89,8 +87,6 @@ def extract_code(text):
                 name = parts[0].strip()
             if not name:
                 name = parts[0].strip()
-            if len(name.split()) == 1 and name.isalpha():
-                return "UNIQUE:" + name
             return name
         return "N/A"
 
@@ -113,14 +109,12 @@ def extract_code(text):
 
         if not after:
             return "N/A"
-        if len(after.split()) == 1 and after.isalpha():
-            return "UNIQUE:" + after
         return after
 
     # === FALLBACK: kata ALLCAPS di akhir kalimat → UNIQUE ===
     m = re.search(r'\b([A-Z]{2,})\s*$', t)
     if m:
-        return "UNIQUE:" + m.group(1)
+        return m.group(1)
 
     return "N/A"
 
