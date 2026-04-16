@@ -22,6 +22,9 @@ def normalize_kode(x):
     x = re.sub(r'\s+', ' ', x)
     return x
 
+# ==============================
+# EXTRACT UNIQUE CODE (BCA)
+# ==============================
 def extract_code(text):
     if not text or str(text).strip() == "":
         return "N/A"
@@ -33,49 +36,107 @@ def extract_code(text):
     upper = t.upper()
 
     # === SKIP ===
-    if "KARTU KREDIT" in upper or "KR OTOMATIS" in upper:
+    if "KARTU KREDIT" in upper:
+        return "IGNORE"
+    if "KR OTOMATIS" in upper:
         return "IGNORE"
 
-    # === NOMOR REKENING (PRIORITAS 1) ===
-    m = re.search(r'\b(\d{10,16})\b', t)
-    if m:
-        return m.group(1)
-
-    # === TRSF E-BANKING CR → FIX: ambil nama setelah kode+nominal ===
-    if "TRSF E-BANKING CR" in upper:
-        # Pattern: TRSF E-BANKING CR [kode] [nominal] [NAMA]
-        m = re.search(r'TRSF E-BANKING CR\s+\S+\s+[\d,]+\.?\d*\s+(.+?)(?=\s+\d{6,}|$)', t, re.IGNORECASE)
-        if m:
-            return m.group(1).strip()
-        return "N/A"
-
-    # === SWITCHING CR TRF → ambil NAMA sebelum angka panjang ===
-    if "SWITCHING CR" in upper and "TRF" in upper:
-        # Buang "ID SPONSOR", ambil nama sampai angka 3 digit+
-        name = re.sub(r'TRF\s+(ID SPONSOR\s+)?(.+?)(?:\s+\d{3,}|$)', r'\2', t, flags=re.IGNORECASE).strip()
-        return name if name else "N/A"
-
-    # === SETORAN TUNAI → nama setelah SPONSOR, stop sebelum angka ===
-    if "SETORAN TUNAI" in upper:
-        after = re.sub(r'SETORAN TUNAI\s*(SPONSOR\s+)?', '', t, flags=re.IGNORECASE).strip()
-        after = re.split(r'\s+\d{2,}', after)[0].strip()
-        return after if after else "N/A"
-
-    # === SETORAN TRSF DR ===
+    # === SETORAN TRSF DR → ambil nomor rekening ===
     m = re.search(r'SETORAN TRSF DR\s+(\d+)', t, re.IGNORECASE)
     if m:
+        return m.group(1).strip()
+
+    # === TRSF E-BANKING CR: scan ALLCAPS dari belakang setelah nominal ===
+    if re.search(r'TRSF E-BANKING CR', upper):
+        # Coba cari setelah nominal (angka.desimal)
+        m = re.search(r'[\d,]+\.\d+\s+(.*)', t)
+        if m:
+            after_nominal = m.group(1).strip()
+        else:
+            # Tidak ada nominal → ambil semua setelah 2 token pertama (kode transaksi)
+            m2 = re.search(r'TRSF E-BANKING CR\s+\S+\s+\S+\s+(.*)', t, re.IGNORECASE)
+            after_nominal = m2.group(1).strip() if m2 else ""
+    
+        if after_nominal:
+            words = after_nominal.split()
+            name_words = []
+            for w in reversed(words):
+                w_clean = re.sub(r'[^A-Za-z]', '', w)  # strip tanda baca
+                if w_clean and w_clean.isupper():
+                    name_words.insert(0, w_clean)
+                    if len(name_words) >= 4:
+                        break
+                else:
+                    if name_words:  # sudah mulai collect → stop
+                        break
+                    # belum collect → skip noise/tanda baca di akhir
+                    continue
+            if name_words:
+                return " ".join(name_words)
+        return "N/A"
+
+    # === BI-FAST CR → ambil nama setelah DR + angka (apapun yang ada di tengah) ===
+    if "BI-FAST CR" in upper:
+        m = re.search(r'BI-FAST CR\b.*?\bDR\s+\d+\s+(.*)', t, re.IGNORECASE)
+        if m:
+            name = m.group(1).strip()
+            return name if name else "N/A"
+        return "N/A"
+
+    # === SWITCHING CR + TRF ===
+    # Kalau ada TANGGAL → nama diulang lebih pendek di belakang → ambil SETELAH angka
+    # Kalau tidak ada TANGGAL → nama utama di depan → ambil SEBELUM angka
+    if "SWITCHING CR" in upper and "TRF" in upper:
+        m = re.search(r'TRF\s+(.*)', t, re.IGNORECASE)
+        if m:
+            after_trf = m.group(1).strip()
+            parts = re.split(r'\s+\d+\s+', after_trf)
+            if "TANGGAL" in upper:
+                # Ada tanggal di prefix → ambil bagian terakhir (nama singkat diulang)
+                name = parts[-1].strip()
+            else:
+                # Tidak ada tanggal → ambil bagian pertama (nama utama)
+                name = parts[0].strip()
+            if not name:
+                name = parts[0].strip()
+            return name
+        return "N/A"
+
+    # === SETORAN TUNAI → ambil nama, bersihkan prefix dan suffix ===
+    if "SETORAN TUNAI" in upper:
+        after = re.sub(r'SETORAN TUNAI\s*', '', t, flags=re.IGNORECASE).strip()
+        # Buang prefix umum
+        after = re.sub(r'^SPONSOR\s+', '', after, flags=re.IGNORECASE).strip()
+        after = re.sub(r'^TF DARI\s+', '', after, flags=re.IGNORECASE).strip()
+        # Buang setelah " - " (misal "TONNY WIJAYA - PONTIANAK")
+        after = re.split(r'\s+-\s+', after)[0].strip()
+        # Potong setelah angka di tengah (misal "ANTONIU S ANGGORO 20 AN AK")
+        after = re.split(r'\s+\d+\s+', after)[0].strip()
+        # Buang suffix bulan/tahun
+        after = re.sub(
+            r'\s+(JAN|FEB|MAR|APR|MEI|JUN|JUL|AGU|SEP|OKT|NOV|DES)(\+\S+)?(\s+\d{4})?\s*$',
+            '', after, flags=re.IGNORECASE
+        ).strip()
+        after = re.sub(r'\s+\d{4}\s*$', '', after).strip()
+
+        if not after:
+            return "N/A"
+        return after
+
+    # === FALLBACK: kata ALLCAPS di akhir kalimat → UNIQUE ===
+    m = re.search(r'\b([A-Z]{2,})\s*$', t)
+    if m:
         return m.group(1)
 
-    # === BI-FAST CR ===
-    if "BI-FAST CR" in upper:
-        m = re.search(r'BI-FAST CR.*DR\s+\d+\s+(.*)', t, re.IGNORECASE)
-        return m.group(1).strip() if m else "N/A"
+    return "N/A"
 
-    # === FALLBACK: ALLCAPS TERPANJANG ===
-    words = re.findall(r'\b[A-Z]{4,}\b', t)
-    return max(words, key=len) if words else "N/A"
-
-
+# ==============================
+# LOAD STATEMENT (BCA)
+# Kolom deskripsi bisa: Keterangan, Uraian Transaksi, Description
+# ==============================
+# ==============================
+# LOAD STATEMENT (BCA) - FILTER CR ONLY DARI AWAL
+# ==============================
 # ==============================
 # LOAD STATEMENT (BCA) - FILTER CR ONLY DARI AWAL
 # ==============================
