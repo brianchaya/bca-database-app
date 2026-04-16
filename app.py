@@ -178,7 +178,7 @@ def load_statement(file):
         # 🔥 FILTER CR ONLY - DROP DB DAN KOSONG DARI AWAL 🔥
         crdb_candidates = [
             c for c in df.columns
-            if str(c).strip().upper() in ("CR/DB", "CRDB", "CR / DB", "TYPE", "TIPE")
+            if str(c).strip().upper() in ("CR/DB", "CRDB", "CR / DB", "TYPE", "TIPE", "CR/DR", "CR / DR", "CRDR")
             or (str(c).strip().upper().startswith("CR") and "DB" in str(c).strip().upper())
         ]
 
