@@ -223,6 +223,18 @@ def prepare_new(df):
 
     desc_col = desc_candidates[0]
 
+    # 🔥 Filter hanya baris CR (drop DB dan kosong)
+    crdb_candidates = [
+        c for c in df.columns
+        if str(c).strip().upper() in ("CR/DB", "CRDB", "CR / DB", "TYPE", "TIPE")
+        or str(c).strip().upper().startswith("CR")
+        and "DB" in str(c).strip().upper()
+    ]
+
+    if crdb_candidates:
+        crdb_col = crdb_candidates[0]
+        df = df[df[crdb_col].astype(str).str.strip().str.upper() == "CR"].copy()
+
     df["KODE_UNIK"] = df[desc_col].apply(extract_code)
 
     # Buang baris IGNORE (kartu kredit, kr otomatis, dll)
