@@ -137,37 +137,64 @@ def extract_code(text):
 # ==============================
 # LOAD STATEMENT (BCA) - FILTER CR ONLY DARI AWAL
 # ==============================
+# ==============================
+# LOAD STATEMENT (BCA) - FILTER CR ONLY DARI AWAL
+# ==============================
 def load_statement(file):
-    if file.name.endswith(".csv"):
-        df = pd.read_csv(file)
-    else:
-        xls = pd.ExcelFile(file)
-        # ... [kode deteksi sheet sama persis] ...
-        for sheet in xls.sheet_names[:10]:
-            preview = pd.read_excel(xls, sheet_name=sheet, header=None, nrows=20)
-            for i in range(len(preview)):
-                row = preview.iloc[i]
-                row_str = [str(x).lower() for x in row]
-                if any("keterangan" in x or "uraian" in x or "description" in x for x in row_str):
-                    df = pd.read_excel(xls, sheet_name=sheet, header=i)
+    try:
+        if file.name.endswith(".csv"):
+            df = pd.read_csv(file)
+        else:
+            xls = pd.ExcelFile(file)
+            df = None
+
+            # Deteksi sheet dan header
+            for sheet in xls.sheet_names[:10]:
+                preview = pd.read_excel(xls, sheet_name=sheet, header=None, nrows=20)
+                
+                for i in range(len(preview)):
+                    row = preview.iloc[i]
+                    row_str = [str(x).lower() for x in row if pd.notna(x)]
+                    if any(
+                        "keterangan" in x or
+                        "uraian" in x or
+                        "description" in x
+                        for x in row_str
+                    ):
+                        df = pd.read_excel(xls, sheet_name=sheet, header=i)
+                        break
+                if df is not None:
                     break
-            else:
+            
+            if df is None:
                 df = pd.read_excel(xls, sheet_name=0)
 
-    # 🔥 FILTER CR ONLY - DROP DB DAN KOSONG DARI AWAL 🔥
-    crdb_candidates = [
-        c for c in df.columns
-        if str(c).strip().upper() in ("CR/DB", "CRDB", "CR / DB", "TYPE", "TIPE")
-        or str(c).strip().upper().startswith("CR") and "DB" in str(c).strip().upper()
-    ]
+        if df.empty:
+            st.error("File is empty.")
+            st.stop()
 
-    if crdb_candidates:
-        crdb_col = crdb_candidates[0]
-        initial_rows = len(df)
-        df = df[df[crdb_col].astype(str).str.strip().str.upper() == "CR"].copy()
-        st.info(f"Filtered CR only: {initial_rows} → {len(df)} rows")
-    
-    return df
+        df.columns = df.columns.astype(str).str.strip()
+        
+        # 🔥 FILTER CR ONLY - DROP DB DAN KOSONG DARI AWAL 🔥
+        crdb_candidates = [
+            c for c in df.columns
+            if str(c).strip().upper() in ("CR/DB", "CRDB", "CR / DB", "TYPE", "TIPE")
+            or (str(c).strip().upper().startswith("CR") and "DB" in str(c).strip().upper())
+        ]
+
+        if crdb_candidates:
+            crdb_col = crdb_candidates[0]
+            initial_rows = len(df)
+            df = df[df[crdb_col].astype(str).str.strip().str.upper() == "CR"].copy()
+            st.info(f"✅ Filtered CR only: {initial_rows} → {len(df)} rows")
+        else:
+            st.warning("⚠️ CR/DB column not found. Loading all data.")
+
+        return df
+        
+    except Exception as e:
+        st.error(f"Error reading file: {str(e)}")
+        st.stop()
 # ==============================
 # LOAD EXISTING
 # ==============================
