@@ -22,9 +22,6 @@ def normalize_kode(x):
     x = re.sub(r'\s+', ' ', x)
     return x
 
-# ==============================
-# EXTRACT UNIQUE CODE (BCA)
-# ==============================
 def extract_code(text):
     if not text or str(text).strip() == "":
         return "N/A"
@@ -36,100 +33,67 @@ def extract_code(text):
     upper = t.upper()
 
     # === SKIP ===
-    if "KARTU KREDIT" in upper:
-        return "IGNORE"
-    if "KR OTOMATIS" in upper:
+    if "KARTU KREDIT" in upper or "KR OTOMATIS" in upper:
         return "IGNORE"
 
-    # === SETORAN TRSF DR → ambil nomor rekening ===
+    # === 1. PRIORITAS #1: NOMOR REKENING (13 digit) ===
+    m = re.search(r'\b(\d{10,16})\b', t)
+    if m:
+        return m.group(1)
+
+    # === 2. TRSF E-BANKING CR → AMBIL NAMA SETELAH KODE TRANSAKSI ===
+    if "TRSF E-BANKING CR" in upper:
+        # Skip sampai setelah kode transaksi (1302/FTSCY/WS95051)
+        m = re.search(r'TRSF E-BANKING CR\s+\S+\s+\S+\s+[\d,]+\.?\d*\s+(.*)', t, re.IGNORECASE)
+        if m:
+            name = m.group(1).strip()
+            # Ambil sampai ketemu angka/nama perusahaan
+            name = re.split(r'\s+\d{6,}', name)[0].strip()
+            return name if name else "N/A"
+        return "N/A"
+
+    # === 3. BI-FAST CR ===
+    if "BI-FAST CR" in upper:
+        m = re.search(r'BI-FAST CR\b.*?\bDR\s+\d+\s+(.*)', t, re.IGNORECASE)
+        if m:
+            return m.group(1).strip() or "N/A"
+        return "N/A"
+
+    # === 4. SWITCHING CR TRF → AMBIL NAMA DEPAN (SEBELUM ANGKA) ===
+    if "SWITCHING CR" in upper and "TRF" in upper:
+        # Ambil setelah TRF, sebelum angka panjang
+        m = re.search(r'TRF\s+(.*?)(?:\s+\d{3,}\s+|$)', t, re.IGNORECASE | re.DOTALL)
+        if m:
+            name = m.group(1).strip()
+            # Buang prefix "ID SPONSOR"
+            name = re.sub(r'^(ID SPONSOR|SPONSOR)\s+', '', name, flags=re.IGNORECASE).strip()
+            return name if name else "N/A"
+        return "N/A"
+
+    # === 5. SETORAN TUNAI → NAMA SETELAH SPONSOR ===
+    if "SETORAN TUNAI" in upper:
+        after = re.sub(r'SETORAN TUNAI\s*', '', t, flags=re.IGNORECASE).strip()
+        after = re.sub(r'^(SPONSOR|TF DARI)\s+', '', after, flags=re.IGNORECASE).strip()
+        # STOP sebelum angka 2 digit ke atas
+        after = re.split(r'\s+\d{2,}', after)[0].strip()
+        after = re.sub(r'\s+-\s+.*', '', after).strip()  # Buang setelah "-"
+        
+        return after if after else "N/A"
+
+    # === 6. SETORAN TRSF DR → rekening ===
     m = re.search(r'SETORAN TRSF DR\s+(\d+)', t, re.IGNORECASE)
     if m:
         return m.group(1).strip()
 
-    # === TRSF E-BANKING CR: scan ALLCAPS dari belakang setelah nominal ===
-    if re.search(r'TRSF E-BANKING CR', upper):
-        # Coba cari setelah nominal (angka.desimal)
-        m = re.search(r'[\d,]+\.\d+\s+(.*)', t)
-        if m:
-            after_nominal = m.group(1).strip()
-        else:
-            # Tidak ada nominal → ambil semua setelah 2 token pertama (kode transaksi)
-            m2 = re.search(r'TRSF E-BANKING CR\s+\S+\s+\S+\s+(.*)', t, re.IGNORECASE)
-            after_nominal = m2.group(1).strip() if m2 else ""
-    
-        if after_nominal:
-            words = after_nominal.split()
-            name_words = []
-            for w in reversed(words):
-                w_clean = re.sub(r'[^A-Za-z]', '', w)  # strip tanda baca
-                if w_clean and w_clean.isupper():
-                    name_words.insert(0, w_clean)
-                    if len(name_words) >= 4:
-                        break
-                else:
-                    if name_words:  # sudah mulai collect → stop
-                        break
-                    # belum collect → skip noise/tanda baca di akhir
-                    continue
-            if name_words:
-                return " ".join(name_words)
-        return "N/A"
-
-    # === BI-FAST CR → ambil nama setelah DR + angka (apapun yang ada di tengah) ===
-    if "BI-FAST CR" in upper:
-        m = re.search(r'BI-FAST CR\b.*?\bDR\s+\d+\s+(.*)', t, re.IGNORECASE)
-        if m:
-            name = m.group(1).strip()
-            return name if name else "N/A"
-        return "N/A"
-
-    # === SWITCHING CR + TRF ===
-    # Kalau ada TANGGAL → nama diulang lebih pendek di belakang → ambil SETELAH angka
-    # Kalau tidak ada TANGGAL → nama utama di depan → ambil SEBELUM angka
-    if "SWITCHING CR" in upper and "TRF" in upper:
-        m = re.search(r'TRF\s+(.*)', t, re.IGNORECASE)
-        if m:
-            after_trf = m.group(1).strip()
-            parts = re.split(r'\s+\d+\s+', after_trf)
-            if "TANGGAL" in upper:
-                # Ada tanggal di prefix → ambil bagian terakhir (nama singkat diulang)
-                name = parts[-1].strip()
-            else:
-                # Tidak ada tanggal → ambil bagian pertama (nama utama)
-                name = parts[0].strip()
-            if not name:
-                name = parts[0].strip()
-            return name
-        return "N/A"
-
-    # === SETORAN TUNAI → ambil nama, bersihkan prefix dan suffix ===
-    if "SETORAN TUNAI" in upper:
-        after = re.sub(r'SETORAN TUNAI\s*', '', t, flags=re.IGNORECASE).strip()
-        # Buang prefix umum
-        after = re.sub(r'^SPONSOR\s+', '', after, flags=re.IGNORECASE).strip()
-        after = re.sub(r'^TF DARI\s+', '', after, flags=re.IGNORECASE).strip()
-        # Buang setelah " - " (misal "TONNY WIJAYA - PONTIANAK")
-        after = re.split(r'\s+-\s+', after)[0].strip()
-        # Potong setelah angka di tengah (misal "ANTONIU S ANGGORO 20 AN AK")
-        after = re.split(r'\s+\d+\s+', after)[0].strip()
-        # Buang suffix bulan/tahun
-        after = re.sub(
-            r'\s+(JAN|FEB|MAR|APR|MEI|JUN|JUL|AGU|SEP|OKT|NOV|DES)(\+\S+)?(\s+\d{4})?\s*$',
-            '', after, flags=re.IGNORECASE
-        ).strip()
-        after = re.sub(r'\s+\d{4}\s*$', '', after).strip()
-
-        if not after:
-            return "N/A"
-        return after
-
-    # === FALLBACK: kata ALLCAPS di akhir kalimat → UNIQUE ===
-    m = re.search(r'\b([A-Z]{2,})\s*$', t)
+    # === 7. FALLBACK: ALLCAPS 4+ HURUF DI AKHIR (SEBELUM ANGKA) ===
+    m = re.search(r'([A-Z]{4,})(?=\s+\d|$)', t)
     if m:
         return m.group(1)
 
-    return "N/A"
-
+    # === 8. ULTIMATE FALLBACK: NAMA TERPANJANG ===
+    words = [w for w in t.split() if re.match(r'^[A-Z]{2,}$', w) and len(w) >= 4]
+    return words[0] if words else "N/A"
+    
 # ==============================
 # LOAD STATEMENT (BCA)
 # Kolom deskripsi bisa: Keterangan, Uraian Transaksi, Description
