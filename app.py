@@ -184,6 +184,8 @@ def load_statement(file):
             and ("DB" in str(c).strip().upper() or "DR" in str(c).strip().upper())
         )
 
+        ]
+
         if crdb_candidates:
             crdb_col = crdb_candidates[0]
             initial_rows = len(df)
