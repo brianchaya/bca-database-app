@@ -134,28 +134,40 @@ def extract_code(text):
 # LOAD STATEMENT (BCA)
 # Kolom deskripsi bisa: Keterangan, Uraian Transaksi, Description
 # ==============================
+# ==============================
+# LOAD STATEMENT (BCA) - FILTER CR ONLY DARI AWAL
+# ==============================
 def load_statement(file):
     if file.name.endswith(".csv"):
-        return pd.read_csv(file)
+        df = pd.read_csv(file)
+    else:
+        xls = pd.ExcelFile(file)
+        # ... [kode deteksi sheet sama persis] ...
+        for sheet in xls.sheet_names[:10]:
+            preview = pd.read_excel(xls, sheet_name=sheet, header=None, nrows=20)
+            for i in range(len(preview)):
+                row = preview.iloc[i]
+                row_str = [str(x).lower() for x in row]
+                if any("keterangan" in x or "uraian" in x or "description" in x for x in row_str):
+                    df = pd.read_excel(xls, sheet_name=sheet, header=i)
+                    break
+            else:
+                df = pd.read_excel(xls, sheet_name=0)
 
-    xls = pd.ExcelFile(file)
+    # 🔥 FILTER CR ONLY - DROP DB DAN KOSONG DARI AWAL 🔥
+    crdb_candidates = [
+        c for c in df.columns
+        if str(c).strip().upper() in ("CR/DB", "CRDB", "CR / DB", "TYPE", "TIPE")
+        or str(c).strip().upper().startswith("CR") and "DB" in str(c).strip().upper()
+    ]
 
-    for sheet in xls.sheet_names[:10]:
-        preview = pd.read_excel(xls, sheet_name=sheet, header=None, nrows=20)
-
-        for i in range(len(preview)):
-            row = preview.iloc[i]
-            row_str = [str(x).lower() for x in row]
-            if any(
-                "keterangan" in x or
-                "uraian" in x or
-                "description" in x
-                for x in row_str
-            ):
-                return pd.read_excel(xls, sheet_name=sheet, header=i)
-
-    return pd.read_excel(xls, sheet_name=0)
-
+    if crdb_candidates:
+        crdb_col = crdb_candidates[0]
+        initial_rows = len(df)
+        df = df[df[crdb_col].astype(str).str.strip().str.upper() == "CR"].copy()
+        st.info(f"Filtered CR only: {initial_rows} → {len(df)} rows")
+    
+    return df
 # ==============================
 # LOAD EXISTING
 # ==============================
@@ -222,18 +234,6 @@ def prepare_new(df):
         st.stop()
 
     desc_col = desc_candidates[0]
-
-    # 🔥 Filter hanya baris CR (drop DB dan kosong)
-    crdb_candidates = [
-        c for c in df.columns
-        if str(c).strip().upper() in ("CR/DB", "CRDB", "CR / DB", "TYPE", "TIPE")
-        or str(c).strip().upper().startswith("CR")
-        and "DB" in str(c).strip().upper()
-    ]
-
-    if crdb_candidates:
-        crdb_col = crdb_candidates[0]
-        df = df[df[crdb_col].astype(str).str.strip().str.upper() == "CR"].copy()
 
     df["KODE_UNIK"] = df[desc_col].apply(extract_code)
 
