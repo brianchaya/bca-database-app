@@ -58,14 +58,18 @@ def extract_code(text):
             after_nominal = m2.group(1).strip() if m2 else ""
     
         if after_nominal:
-            words = after_nominal.split()
+            # Pecah berdasarkan 2+ spasi dulu → ambil segment paling kanan
+            segments = re.split(r'  +', after_nominal)
+            last_segment = segments[-1].strip()
+            
+            words = last_segment.split()
             name_words = []
             for w in reversed(words):
-                w_clean = re.sub(r'[^A-Za-z]', '', w)  # huruf saja
-                if w_clean and w_clean.isupper() and w_clean == w:  # kata asli harus pure huruf kapital
+                w_clean = re.sub(r'[^A-Za-z]', '', w)
+                if w_clean and w_clean.isupper() and w_clean == w:
                     name_words.insert(0, w_clean)
                 else:
-                    break  # stop jika ada angka, simbol, huruf kecil di kata aslinya
+                    break
             if name_words:
                 return " ".join(name_words)
         return "N/A"
