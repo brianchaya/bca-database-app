@@ -48,25 +48,39 @@ def extract_code(text):
 
     # === TRSF E-BANKING CR: scan ALLCAPS dari belakang setelah nominal ===
     if re.search(r'TRSF E-BANKING CR', upper):
-        # Coba cari setelah nominal (angka.desimal)
         m = re.search(r'[\d,]+\.\d+\s+(.*)', t)
         if m:
             after_nominal = m.group(1).strip()
         else:
-            # Tidak ada nominal → ambil semua setelah 2 token pertama (kode transaksi)
             m2 = re.search(r'TRSF E-BANKING CR\s+\S+\s+\S+\s+(.*)', t, re.IGNORECASE)
             after_nominal = m2.group(1).strip() if m2 else ""
     
         if after_nominal:
-            # Pecah berdasarkan 2+ spasi dulu → ambil segment paling kanan
+            # === Kasus khusus: ESPAY DEBIT → ambil nama setelah "-" sebelum ESPAY ===
+            if re.search(r'ESPAY', after_nominal, re.IGNORECASE):
+                m_espay = re.search(r'-([A-Z][A-Z\s]+?)\s+ESPAY', after_nominal, re.IGNORECASE)
+                if m_espay:
+                    return m_espay.group(1).strip()
+                return "N/A"
+    
+            # Normalize whitespace: ganti tab/non-breaking space → spasi biasa dulu
+            after_nominal = re.sub(r'[\t\xa0]', ' ', after_nominal)
+    
+            # Pecah berdasarkan 2+ spasi → ambil segment paling kanan
             segments = re.split(r'  +', after_nominal)
             last_segment = segments[-1].strip()
-            
+    
+            # Noise words yang diblacklist meski ALLCAPS
+            NOISE = {'BLN', 'JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN',
+                     'JUL', 'AGS', 'SEP', 'OKT', 'NOV', 'DES',
+                     'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
+                     'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'}
+    
             words = last_segment.split()
             name_words = []
             for w in reversed(words):
                 w_clean = re.sub(r'[^A-Za-z]', '', w)
-                if w_clean and w_clean.isupper() and w_clean == w:
+                if w_clean and w_clean.isupper() and w_clean == w and w_clean not in NOISE:
                     name_words.insert(0, w_clean)
                 else:
                     break
@@ -89,24 +103,36 @@ def extract_code(text):
                     break  # stop langsung, apapun itu (angka, huruf kecil, simbol)
             return " ".join(name_words) if name_words else "N/A"
         return "N/A"
-    
     # === SWITCHING CR + TRF ===
-    # Kalau ada TANGGAL → nama diulang lebih pendek di belakang → ambil SETELAH angka
-    # Kalau tidak ada TANGGAL → nama utama di depan → ambil SEBELUM angka
     if "SWITCHING CR" in upper and "TRF" in upper:
         m = re.search(r'TRF\s+(.*)', t, re.IGNORECASE)
         if m:
             after_trf = m.group(1).strip()
-            parts = re.split(r'\s+\d+\s+', after_trf)
+    
             if "TANGGAL" in upper:
-                # Ada tanggal di prefix → ambil bagian terakhir (nama singkat diulang)
-                name = parts[-1].strip()
+                # Ambil bagian setelah angka standalone terakhir (misal 022)
+                m2 = re.search(r'.*\s+\d+\s+(.*)', after_trf)
+                segment = m2.group(1).strip() if m2 else after_trf
             else:
-                # Tidak ada tanggal → ambil bagian pertama (nama utama)
-                name = parts[0].strip()
-            if not name:
-                name = parts[0].strip()
-            return name
+                # Ambil bagian sebelum angka standalone pertama (misal 022)
+                m2 = re.search(r'^(.*?)\s+\d+\s+', after_trf)
+                segment = m2.group(1).strip() if m2 else after_trf
+    
+            # Scan dari kanan: stop di 2+ spasi atau kata non-pure-kapital
+            parts = re.split(r'  +', segment)
+            last_part = parts[-1].strip()
+    
+            words = last_part.split()
+            name_words = []
+            for w in reversed(words):
+                w_clean = re.sub(r'[^A-Za-z]', '', w)
+                if w_clean and w_clean.isupper() and w_clean == w:
+                    name_words.insert(0, w_clean)
+                else:
+                    break
+            
+            if name_words:
+                return " ".join(name_words)
         return "N/A"
 
     # === SETORAN TUNAI → ambil nama, bersihkan prefix dan suffix ===
