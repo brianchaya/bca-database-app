@@ -64,25 +64,28 @@ def extract_code(text):
                 w_clean = re.sub(r'[^A-Za-z]', '', w)  # strip tanda baca
                 if w_clean and w_clean.isupper():
                     name_words.insert(0, w_clean)
-                    if len(name_words) >= 4:
-                        break
                 else:
-                    if name_words:  # sudah mulai collect → stop
-                        break
-                    # belum collect → skip noise/tanda baca di akhir
-                    continue
+                    break  # stop langsung, apapun itu (angka, huruf kecil, simbol)
             if name_words:
                 return " ".join(name_words)
         return "N/A"
-
-    # === BI-FAST CR → ambil nama setelah DR + angka (apapun yang ada di tengah) ===
+    
+    # === BI-FAST CR → scan ALLCAPS dari belakang setelah DR + angka ===
     if "BI-FAST CR" in upper:
         m = re.search(r'BI-FAST CR\b.*?\bDR\s+\d+\s+(.*)', t, re.IGNORECASE)
         if m:
-            name = m.group(1).strip()
-            return name if name else "N/A"
+            after_dr = m.group(1).strip()
+            words = after_dr.split()
+            name_words = []
+            for w in reversed(words):
+                w_clean = re.sub(r'[^A-Za-z]', '', w)  # strip tanda baca
+                if w_clean and w_clean.isupper():
+                    name_words.insert(0, w_clean)
+                else:
+                    break  # stop langsung, apapun itu (angka, huruf kecil, simbol)
+            return " ".join(name_words) if name_words else "N/A"
         return "N/A"
-
+    
     # === SWITCHING CR + TRF ===
     # Kalau ada TANGGAL → nama diulang lebih pendek di belakang → ambil SETELAH angka
     # Kalau tidak ada TANGGAL → nama utama di depan → ambil SEBELUM angka
