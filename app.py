@@ -61,11 +61,11 @@ def extract_code(text):
             words = after_nominal.split()
             name_words = []
             for w in reversed(words):
-                w_clean = re.sub(r'[^A-Za-z]', '', w)  # strip tanda baca
-                if w_clean and w_clean.isupper():
+                w_clean = re.sub(r'[^A-Za-z]', '', w)  # huruf saja
+                if w_clean and w_clean.isupper() and w_clean == w:  # kata asli harus pure huruf kapital
                     name_words.insert(0, w_clean)
                 else:
-                    break  # stop langsung, apapun itu (angka, huruf kecil, simbol)
+                    break  # stop jika ada angka, simbol, huruf kecil di kata aslinya
             if name_words:
                 return " ".join(name_words)
         return "N/A"
