@@ -91,23 +91,24 @@ def extract_code(text):
         return "N/A"
     
     # === SWITCHING CR + TRF ===
+    # === SWITCHING CR + TRF ===
     if "SWITCHING CR" in upper and "TRF" in upper:
-        m_3digit = re.search(r'\s{2,}\d{3}(?!\d)', t)
+        m_3digit = re.search(r'\s{2,}\d{3}(?!\d)', raw)  # pakai raw, bukan t
         if m_3digit:
-            before_3digit = t[:m_3digit.start()]
+            before_3digit = raw[:m_3digit.start()]
             words = before_3digit.split()
     
             result_words = []
             for word in reversed(words):
-                if word in ("TRF", "ID"):  # keyword stop
+                if word in ("TRF", "ID"):
                     break
-                if re.search(r'[a-z0-9]', word):  # ada huruf kecil atau angka → stop
+                if re.search(r'[a-z0-9]', word):
                     break
                 result_words.insert(0, word)
     
             name = ' '.join(result_words).strip()
             return name if name else "N/A"
-
+    
         return "N/A"
     # === SETORAN TUNAI → ambil nama, bersihkan prefix dan suffix ===
     if "SETORAN TUNAI" in upper:
