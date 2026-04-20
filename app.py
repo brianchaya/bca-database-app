@@ -108,6 +108,7 @@ def extract_code(text):
                 result_words.insert(0, word)
             
             name = ' '.join(result_words).strip()
+            print(f"DEBUG: result_words={result_words}, name='{name}'")
             
             # Filter di sini, bukan di prepare_new
             letters_only = re.sub(r'\s+', '', name)
