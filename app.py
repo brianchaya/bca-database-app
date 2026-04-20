@@ -91,24 +91,26 @@ def extract_code(text):
         return "N/A"
     
     # === SWITCHING CR + TRF ===
-    # Kalau ada TANGGAL → nama diulang lebih pendek di belakang → ambil SETELAH angka
-    # Kalau tidak ada TANGGAL → nama utama di depan → ambil SEBELUM angka
     if "SWITCHING CR" in upper and "TRF" in upper:
-        m = re.search(r'TRF\s+(.*)', t, re.IGNORECASE)
-        if m:
-            after_trf = m.group(1).strip()
-            parts = re.split(r'\s+\d+\s+', after_trf)
-            if "TANGGAL" in upper:
-                # Ada tanggal di prefix → ambil bagian terakhir (nama singkat diulang)
-                name = parts[-1].strip()
-            else:
-                # Tidak ada tanggal → ambil bagian pertama (nama utama)
-                name = parts[0].strip()
-            if not name:
-                name = parts[0].strip()
-            return name
+        m_3digit = re.search(r'\s{2,}\d{3}(?!\d)', t)
+        if m_3digit:
+            before_3digit = t[:m_3digit.start()]
+            words = before_3digit.split()
+    
+            result_words = []
+            for word in reversed(words):
+                if word in ("TRF", "ID"):
+                    break
+                if not word.isupper():
+                    break
+                if re.search(r'\d', word):
+                    break
+                result_words.insert(0, word)
+    
+            name = ' '.join(result_words).strip()
+            return name if name else "N/A"
+        
         return "N/A"
-
     # === SETORAN TUNAI → ambil nama, bersihkan prefix dan suffix ===
     if "SETORAN TUNAI" in upper:
         after = re.sub(r'SETORAN TUNAI\s*', '', t, flags=re.IGNORECASE).strip()
@@ -273,7 +275,9 @@ def prepare_new(df):
 
     desc_col = desc_candidates[0]
 
-    df["KODE_UNIK"] = df[desc_col].apply(extract_code)
+    df["KODE_UNIK"] = df["KODE_UNIK"].apply(
+        lambda x: "N/A" if len(re.sub(r'\s+', '', str(x))) <= 2 and x != "N/A" else x
+    )
 
     # Buang baris IGNORE (kartu kredit, kr otomatis, dll)
     df = df[df["KODE_UNIK"] != "IGNORE"].copy()
