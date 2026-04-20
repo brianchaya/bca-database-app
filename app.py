@@ -106,9 +106,12 @@ def extract_code(text):
                 if re.search(r'\d', word):
                     break
                 result_words.insert(0, word)
-    
+            
             name = ' '.join(result_words).strip()
-            return name if name else "N/A"
+            
+            # Filter di sini, bukan di prepare_new
+            letters_only = re.sub(r'\s+', '', name)
+            return name if len(letters_only) >= 3 else "N/A"
         
         return "N/A"
     # === SETORAN TUNAI → ambil nama, bersihkan prefix dan suffix ===
