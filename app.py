@@ -99,22 +99,16 @@ def extract_code(text):
     
             result_words = []
             for word in reversed(words):
-                if word in ("TRF", "ID"):
+                if word in ("TRF", "ID"):  # keyword stop
                     break
-                if not word.isupper():
-                    break
-                if re.search(r'\d', word):
+                if re.search(r'[a-z0-9]', word):  # ada huruf kecil atau angka → stop
                     break
                 result_words.insert(0, word)
-            
+    
             name = ' '.join(result_words).strip()
-            st.write(f"DEBUG: t='{t}' | result_words={result_words} | name='{name}'")
-            
-            # Filter di sini, bukan di prepare_new
-            letters_only = re.sub(r'\s+', '', name)
-            return name if len(letters_only) >= 3 else "N/A"
-        
-        return "N/A"
+            return name if name else "N/A"
+
+    return "N/A"
     # === SETORAN TUNAI → ambil nama, bersihkan prefix dan suffix ===
     if "SETORAN TUNAI" in upper:
         after = re.sub(r'SETORAN TUNAI\s*', '', t, flags=re.IGNORECASE).strip()
