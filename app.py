@@ -92,10 +92,10 @@ def extract_code(text):
     
     # === SWITCHING CR + TRF ===
     if "SWITCHING CR" in upper and "TRF" in upper:
-        matches = [(m.start(), m) for m in re.finditer(r'\s{2,}\d{3}(?!\d)', raw)]
+        matches = list(re.finditer(r'(?<!\d)\d{3}(?!\d)', raw))
         if matches:
-            _, m_3digit = matches[-1]  # ambil yang paling belakang
-            before_3digit = raw[:m_3digit.start()]
+            m_3digit = matches[-1]  # ambil yang paling belakang
+            before_3digit = raw[:m_3digit.start()].rstrip()
             words = before_3digit.split()
     
             result_words = []
