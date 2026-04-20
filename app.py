@@ -108,7 +108,7 @@ def extract_code(text):
             name = ' '.join(result_words).strip()
             return name if name else "N/A"
 
-    return "N/A"
+        return "N/A"
     # === SETORAN TUNAI → ambil nama, bersihkan prefix dan suffix ===
     if "SETORAN TUNAI" in upper:
         after = re.sub(r'SETORAN TUNAI\s*', '', t, flags=re.IGNORECASE).strip()
