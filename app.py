@@ -279,7 +279,7 @@ def prepare_new(df):
 
     # df["KODE_UNIK"] = df["KODE_UNIK"].apply(          
         # lambda x: "N/A" if x != "N/A" and len(re.sub(r'\s+', '', str(x))) <= 2 else x
-    )
+    # )
 
     # Buang baris IGNORE (kartu kredit, kr otomatis, dll)
     df = df[df["KODE_UNIK"] != "IGNORE"].copy()
