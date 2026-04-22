@@ -52,6 +52,7 @@ def extract_code(text):
         m = re.search(r'[\d,]+\.\d+\s+(.*)', t)
         if m:
             after_nominal = m.group(1).strip()
+            print(repr(after_nominal)) 
         else:
             # Tidak ada nominal → ambil semua setelah 2 token pertama (kode transaksi)
             m2 = re.search(r'TRSF E-BANKING CR\s+\S+\s+\S+\s+(.*)', t, re.IGNORECASE)
@@ -141,14 +142,6 @@ def extract_code(text):
 
     return "N/A"
 
-# ==============================
-# LOAD STATEMENT (BCA)
-# Kolom deskripsi bisa: Keterangan, Uraian Transaksi, Description
-# ==============================
-# ==============================
-# LOAD STATEMENT (BCA) - FILTER CR ONLY DARI AWAL
-# ==============================
-# ==============================
 # LOAD STATEMENT (BCA) - FILTER CR ONLY DARI AWAL
 # ==============================
 def load_statement(file):
