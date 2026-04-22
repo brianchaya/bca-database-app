@@ -58,10 +58,13 @@ def extract_code(text):
             after_nominal = m2.group(1).strip() if m2 else ""
     
         if after_nominal:
-            # Pecah berdasarkan 2+ spasi dulu → ambil segment paling kanan
-            segments = re.split(r'  +', after_nominal)
-            last_segment = segments[-1].strip()
+            # Ganti semua whitespace non-spasi (tab, newline, NBSP, dll) → 2 spasi (jadi trigger separator)
+            after_nominal_norm = re.sub(r'[\t\n\r\xa0\u2000-\u200b\u3000\f\v]', '  ', after_nominal)
             
+            # Pecah berdasarkan 2+ spasi → ambil segment paling kanan
+            segments = re.split(r'  +', after_nominal_norm)
+            last_segment = segments[-1].strip()
+        
             words = last_segment.split()
             name_words = []
             for w in reversed(words):
@@ -73,7 +76,7 @@ def extract_code(text):
             if name_words:
                 return " ".join(name_words)
         return "N/A"
-    
+            
     # === BI-FAST CR → scan ALLCAPS dari belakang setelah DR + angka ===
     if "BI-FAST CR" in upper:
         m = re.search(r'BI-FAST CR\b.*?\bDR\s+\d+\s+(.*)', t, re.IGNORECASE)
