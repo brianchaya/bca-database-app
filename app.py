@@ -92,32 +92,23 @@ def extract_code(text):
     
     # === SWITCHING CR + TRF ===
     if "SWITCHING CR" in upper and "TRF" in upper:
-        m = re.search(r'TRF\s+(.*)', t, re.IGNORECASE)
-        if m:
-            after_trf = m.group(1).strip()
+        matches = list(re.finditer(r'(?<=\s)\d{3}(?=\s)', raw))
+        if matches:
+            m_3digit = matches[-1]  # ambil yang paling belakang
+            before_3digit = raw[:m_3digit.start()].rstrip()
+            words = before_3digit.split()
     
-            if "TANGGAL" in upper:
-                m2 = re.search(r'.*\s+\d+\s+(.*)', after_trf)
-                segment = m2.group(1).strip() if m2 else after_trf
-            else:
-                # Angka bisa di tengah (diikuti spasi) atau di akhir string
-                m2 = re.search(r'^(.*?)\s+\d+(\s+|$)', after_trf)
-                segment = m2.group(1).strip() if m2 else after_trf
-    
-            parts = re.split(r'  +', segment)
-            last_part = parts[-1].strip()
-    
-            words = last_part.split()
-            name_words = []
-            for w in reversed(words):
-                w_clean = re.sub(r'[^A-Za-z]', '', w)
-                if w_clean and w_clean.isupper() and w_clean == w:
-                    name_words.insert(0, w_clean)
-                else:
+            result_words = []
+            for word in reversed(words):
+                if word in ("TRF", "ID"):
                     break
+                if re.search(r'[a-z0-9]', word):
+                    break
+                result_words.insert(0, word)
     
-            if name_words:
-                return " ".join(name_words)
+            name = ' '.join(result_words).strip()
+            return name if name else "N/A"
+    
         return "N/A"
     # === SETORAN TUNAI → ambil nama, bersihkan prefix dan suffix ===
     if "SETORAN TUNAI" in upper:
