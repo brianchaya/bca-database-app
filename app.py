@@ -82,12 +82,12 @@ def extract_code(text):
             words = after_dr.split()
             name_words = []
             for w in reversed(words):
-                w_clean = re.sub(r'[^A-Za-z]', '', w)  # strip tanda baca
+                w_clean = re.sub(r'[^A-Za-z]', '', w)
                 if w_clean and w_clean.isupper():
                     name_words.insert(0, w_clean)
                 else:
-                    break  # stop langsung, apapun itu (angka, huruf kecil, simbol)
-            return " ".join(name_words) if name_words else "N/A"
+                    break
+            return " ".join(name_words) if name_words else after_dr
         return "N/A"
     
     # === SWITCHING CR + TRF ===
