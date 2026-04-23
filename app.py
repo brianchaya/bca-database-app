@@ -52,7 +52,6 @@ def extract_code(text):
         m = re.search(r'[\d,]+\.\d+\s+(.*)', t)
         if m:
             after_nominal = m.group(1).strip()
-            st.write(repr(after_nominal))
         else:
             # Tidak ada nominal → ambil semua setelah 2 token pertama (kode transaksi)
             m2 = re.search(r'TRSF E-BANKING CR\s+\S+\s+\S+\s+(.*)', t, re.IGNORECASE)
