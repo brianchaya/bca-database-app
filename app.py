@@ -65,7 +65,7 @@ def extract_code(text):
             words = last_segment.split()
             name_words = []
             for w in reversed(words):
-                if w[0].isalpha() and w[0].isupper():  # cukup cek huruf pertama kapital
+                if w[-1].isalpha() and w[-1].isupper():  # cek karakter TERAKHIR kapital
                     name_words.insert(0, w)
                 else:
                     break
