@@ -66,7 +66,7 @@ def extract_code(text):
             name_words = []
             for w in reversed(words):
                 first_letters = re.sub(r'[^A-Za-z]', '', w)
-                if first_letters and first_letters.isupper() and not re.search(r'\d', w):  # ← tambah cek angka
+                if first_letters and first_letters.isupper() and not re.search(r'\d', w) and w[0].isalpha() and w[0].isupper():  # ← kata harus diawali huruf kapital
                     name_words.insert(0, w)
                 else:
                     break
