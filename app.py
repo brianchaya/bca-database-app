@@ -58,19 +58,16 @@ def extract_code(text):
             after_nominal = m2.group(1).strip() if m2 else ""
     
         if after_nominal:
-            # Ganti semua whitespace non-spasi (tab, newline, NBSP, dll) → 2 spasi (jadi trigger separator)
             after_nominal_norm = re.sub(r'[\t\n\r\xa0\u2000-\u200b\u3000\f\v]', '  ', after_nominal)
-            
-            # Pecah berdasarkan 2+ spasi → ambil segment paling kanan
             segments = re.split(r'  +', after_nominal_norm)
-            last_segment = segments[-1].strip()
+            last_segment = segments[-1].strip().rstrip('/- ')
         
             words = last_segment.split()
             name_words = []
             for w in reversed(words):
-                w_clean = re.sub(r'[^A-Za-z]', '', w)
-                if w_clean and w_clean.isupper() and w_clean == w:
-                    name_words.insert(0, w_clean)
+                first_letters = re.sub(r'[^A-Za-z]', '', w)  # ambil huruf saja untuk cek
+                if first_letters and first_letters.isupper():
+                    name_words.insert(0, w)  # tangkap kata ASLI, bukan w_clean
                 else:
                     break
             if name_words:
