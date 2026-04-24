@@ -65,9 +65,9 @@ def extract_code(text):
             words = last_segment.split()
             name_words = []
             for w in reversed(words):
-                first_letters = re.sub(r'[^A-Za-z]', '', w)  # ambil huruf saja untuk cek
-                if first_letters and first_letters.isupper():
-                    name_words.insert(0, w)  # tangkap kata ASLI, bukan w_clean
+                first_letters = re.sub(r'[^A-Za-z]', '', w)
+                if first_letters and first_letters.isupper() and not re.search(r'\d', w):  # ← tambah cek angka
+                    name_words.insert(0, w)
                 else:
                     break
             if name_words:
