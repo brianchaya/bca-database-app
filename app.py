@@ -414,7 +414,7 @@ def grouping(db):
             return "DOUBLE"
 
         kode_words = [w.strip() for w in kode_part.strip().split() if w.strip()]
-        if len(kode_words) >= 5:
+        if len(kode_words) >= 4:
             return "NA"
         if len(kode_words) == 1 and len(kode_words[0]) <= 2:
             return "NA"
