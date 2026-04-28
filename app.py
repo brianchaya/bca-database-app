@@ -423,6 +423,11 @@ def grouping(db):
 
     grouped["TYPE"] = grouped.apply(is_double, axis=1)
 
+    # Pindahkan grouped yang NA ke db_na
+    grouped_na = grouped[grouped["TYPE"] == "NA"].copy()
+    grouped_na = grouped_na[["ID", "KODE_UNIK", "Description", "TYPE"]]
+    db_na = pd.concat([db_na, grouped_na], ignore_index=True)
+
     normal = grouped[grouped["TYPE"] == "NORMAL"]
     double = grouped[grouped["TYPE"] == "DOUBLE"]
 
