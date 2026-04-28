@@ -56,6 +56,12 @@ def extract_code(text):
             after_nominal = m2.group(1).strip() if m2 else ""
     
         if after_nominal:
+            # === Kasus khusus TRFDN- ===
+            if 'TRFDN-' in after_nominal.upper():
+                m_trfdn = re.search(r'TRFDN-(.+?)(?:  |\d|$)', after_nominal, re.IGNORECASE)
+                if m_trfdn:
+                    return m_trfdn.group(1).strip()
+                return "N/A"
             after_nominal_norm = re.sub(r'[\t\n\r\xa0\u2000-\u200b\u3000\f\v]', '  ', after_nominal)
             segments = re.split(r'  +', after_nominal_norm)
             last_segment = segments[-1].strip().rstrip('/- ')
@@ -65,6 +71,7 @@ def extract_code(text):
             for w in reversed(words):
                 if w[-1].isalpha() and w[-1].isupper():  # cek karakter TERAKHIR kapital
                     name_words.insert(0, w)
+                    
                 else:
                     break
             if name_words:
