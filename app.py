@@ -7,7 +7,7 @@ st.title("BCA Transaction Database Generator")
 
 # ==============================
 # UPLOAD
-# ==============================
+# ==============================f
 uploaded_file = st.file_uploader("Upload Bank Statement", type=["xlsx","xls","csv"])
 existing_file = st.file_uploader("Attach Existing Database (Optional)", type=["xlsx"])
 
@@ -48,13 +48,11 @@ def extract_code(text):
 
     # === TRSF E-BANKING CR: scan ALLCAPS dari belakang setelah nominal ===
     if re.search(r'TRSF E-BANKING CR', upper):
-        # Coba cari setelah nominal (angka.desimal)
-        m = re.search(r'[\d,]+\.\d+\s+(.*)', t)
+        m = re.search(r'[\d,]+\.\d+\s+(.*)', raw)  
         if m:
             after_nominal = m.group(1).strip()
         else:
-            # Tidak ada nominal → ambil semua setelah 2 token pertama (kode transaksi)
-            m2 = re.search(r'TRSF E-BANKING CR\s+\S+\s+\S+\s+(.*)', t, re.IGNORECASE)
+            m2 = re.search(r'TRSF E-BANKING CR\s+\S+\s+\S+\s+(.*)', raw, re.IGNORECASE) 
             after_nominal = m2.group(1).strip() if m2 else ""
     
         if after_nominal:
