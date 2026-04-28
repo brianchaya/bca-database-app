@@ -413,13 +413,6 @@ def grouping(db):
         if id_count > 1 or kode_count > 1:
             return "DOUBLE"
 
-        # === kode unik >= 5 kata, atau 1 kata <= 2 huruf → N/A ===
-        kode_words = [w.strip() for w in kode_part.strip().split() if w.strip()]
-        if len(kode_words) >= 4:
-            return "NA"
-        if len(kode_words) == 1 and len(kode_words[0]) <= 2:
-            return "NA"
-
         return "NORMAL"
 
     grouped["TYPE"] = grouped.apply(is_double, axis=1)
