@@ -521,7 +521,10 @@ if uploaded_file:
         separator = pd.DataFrame({"ID":["--- NEW DATA ---"],"KODE_UNIK":[""],"Description":[""],"TYPE":[""]})
 
         exist_df = exist_df[["KODE_UNIK", "ID", "Description", "TYPE"]]
-        new_final = sort_by_id(new_final) 
+        n_normal = sort_by_id(n_normal)
+        n_double = sort_by_id(n_double)
+        n_na = sort_by_id(n_na)
+        new_final = pd.concat([n_normal, n_double, n_na], ignore_index=True)  
         
         final = pd.concat([exist_df, spacer, separator, new_final], ignore_index=True)
 
