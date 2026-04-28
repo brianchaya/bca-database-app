@@ -263,8 +263,13 @@ def prepare_new(df):
 
     desc_col = desc_candidates[0]
 
-    df["KODE_UNIK"] = df[desc_col].apply(extract_code) 
-
+    # debug sementara
+    sample = df[df[desc_col].astype(str).str.contains("TANDYO", na=False)]
+    if not sample.empty:
+        val = sample[desc_col].iloc[0]
+        st.write("RAW dari Excel:", repr(val))
+    
+    df["KODE_UNIK"] = df[desc_col].apply(extract_code)
     # Buang baris IGNORE (kartu kredit, kr otomatis, dll)
     df = df[df["KODE_UNIK"] != "IGNORE"].copy()
 
