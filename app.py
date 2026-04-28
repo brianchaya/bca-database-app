@@ -520,6 +520,9 @@ if uploaded_file:
         spacer = pd.DataFrame({"ID":["",""],"KODE_UNIK":["",""],"Description":["",""],"TYPE":["",""]})
         separator = pd.DataFrame({"ID":["--- NEW DATA ---"],"KODE_UNIK":[""],"Description":[""],"TYPE":[""]})
 
+        exist_df = exist_df[["KODE_UNIK", "ID", "Description", "TYPE"]]
+        new_final = sort_by_id(new_final) 
+        
         final = pd.concat([exist_df, spacer, separator, new_final], ignore_index=True)
 
         st.success("Mode: UPDATE DATABASE")
