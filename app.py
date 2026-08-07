@@ -12,7 +12,7 @@ uploaded_file = st.file_uploader("Upload Bank Statement", type=["xlsx","xls","cs
 existing_file = st.file_uploader("Attach Existing Database (Optional)", type=["xlsx"])
 
 # ==============================
-# NORMALIZE KODE (SUPER STRONG)
+# NORMALIZE CODE
 # ==============================
 def normalize_kode(x):
     x = str(x).strip().upper()
@@ -23,7 +23,7 @@ def normalize_kode(x):
     return x
 
 # ==============================
-# EXTRACT UNIQUE CODE (BCA)
+# EXTRACT UNIQUE CODE
 # ==============================
 def extract_code(text):
     if not text or str(text).strip() == "":
@@ -35,18 +35,18 @@ def extract_code(text):
     t = re.sub(r'\s+', ' ', raw).strip()
     upper = t.upper()
 
-    # === SKIP ===
+    # SKIP
     if "KARTU KREDIT" in upper:
         return "IGNORE"
     if "KR OTOMATIS" in upper:
         return "IGNORE"
 
-    # === SETORAN TRSF DR → ambil nomor rekening ===
+    # SETORAN TRSF DR
     m = re.search(r'SETORAN TRSF DR\s+(\d+)', t, re.IGNORECASE)
     if m:
         return m.group(1).strip()
 
-    # === TRSF E-BANKING CR: scan ALLCAPS dari belakang setelah nominal ===
+    # TRSF E-BANKING CR
     if re.search(r'TRSF E-BANKING CR', upper):
         m = re.search(r'[\d,]+\.\d+\s+(.*)', raw)  
         if m:
@@ -78,7 +78,7 @@ def extract_code(text):
                 return " ".join(name_words)
         return "N/A"
             
-    # === BI-FAST CR → scan ALLCAPS dari belakang setelah DR + angka ===
+    # BI-FAST CR
     if "BI-FAST CR" in upper:
         m = re.search(r'BI-FAST CR\b.*?\bDR\s+\d+\s+(.*)', t, re.IGNORECASE)
         if m:
@@ -94,7 +94,7 @@ def extract_code(text):
             return " ".join(name_words) if name_words else after_dr
         return "N/A"
     
-    # === SWITCHING CR + TRF ===
+    # SWITCHING CR + TRF
     if "SWITCHING CR" in upper and "TRF" in upper:
         matches = list(re.finditer(r'(?<=\s)\d{3}(?=\s|$)', raw))
         if matches:
@@ -114,15 +114,15 @@ def extract_code(text):
             return name if name else "N/A"
     
         return "N/A"
-    # === SETORAN TUNAI → ambil nama, bersihkan prefix dan suffix ===
+    # SETORAN TUNAI
     if "SETORAN TUNAI" in upper:
         after = re.sub(r'SETORAN TUNAI\s*', '', t, flags=re.IGNORECASE).strip()
         # Buang prefix umum
         after = re.sub(r'^SPONSOR\s+', '', after, flags=re.IGNORECASE).strip()
         after = re.sub(r'^TF DARI\s+', '', after, flags=re.IGNORECASE).strip()
-        # Buang setelah " - " (misal "TONNY WIJAYA - PONTIANAK")
+        # Buang setelah " - "
         after = re.split(r'\s+-\s+', after)[0].strip()
-        # Potong setelah angka di tengah (misal "ANTONIU S ANGGORO 20 AN AK")
+        # Potong setelah angka di tengah
         after = re.split(r'\s+\d+\s+', after)[0].strip()
         # Buang suffix bulan/tahun
         after = re.sub(
@@ -135,15 +135,13 @@ def extract_code(text):
             return "N/A"
         return after
 
-    # === FALLBACK: kata ALLCAPS di akhir kalimat → UNIQUE ===
     m = re.search(r'\b([A-Z]{2,})\s*$', t)
     if m:
         return m.group(1)
 
     return "N/A"
 
-# LOAD STATEMENT (BCA) - FILTER CR ONLY DARI AWAL
-# ==============================
+# LOAD STATEMENT
 def load_statement(file):
     try:
         if file.name.endswith(".csv"):
@@ -179,7 +177,6 @@ def load_statement(file):
 
         df.columns = df.columns.astype(str).str.strip()
         
-        # 🔥 FILTER CR ONLY - DROP DB DAN KOSONG DARI AWAL 🔥
         crdb_candidates = [
             c for c in df.columns
             if str(c).strip().upper() in ("CR/DB", "CRDB", "CR / DB", "TYPE", "TIPE", "CR/DR", "CR / DR", "CRDR")
@@ -194,9 +191,9 @@ def load_statement(file):
             crdb_col = crdb_candidates[0]
             initial_rows = len(df)
             df = df[df[crdb_col].astype(str).str.strip().str.upper() == "CR"].copy()
-            st.info(f"✅ Filtered CR only: {initial_rows} → {len(df)} rows")
+            st.info(f"Filtered CR only: {initial_rows} → {len(df)} rows")
         else:
-            st.warning("⚠️ CR/DB column not found. Loading all data.")
+            st.warning("CR/DB column not found. Loading all data.")
 
         return df
         
@@ -271,7 +268,7 @@ def prepare_new(df):
     desc_col = desc_candidates[0]
     
     df["KODE_UNIK"] = df[desc_col].apply(extract_code)
-    # Buang baris IGNORE (kartu kredit, kr otomatis, dll)
+    # Buang baris ignore (kartu kredit, kr otomatis, dll)
     df = df[df["KODE_UNIK"] != "IGNORE"].copy()
 
     df["KODE_UNIK"] = df["KODE_UNIK"].apply(normalize_kode)
@@ -344,7 +341,7 @@ def filter_new_only(existing, new):
     return final
 
 # ==============================
-# CLEAN ID (BCA)
+# CLEAN ID
 # ==============================
 def clean_ids(x):
     ids = []
@@ -423,7 +420,7 @@ def grouping(db):
 
     grouped["TYPE"] = grouped.apply(is_double, axis=1)
 
-    # Pindahkan grouped yang NA ke db_na
+    # Pindahinn grouped yang NA ke db_na
     grouped_na = grouped[grouped["TYPE"] == "NA"].copy()
     grouped_na = grouped_na[["ID", "KODE_UNIK", "Description", "TYPE"]]
     db_na = pd.concat([db_na, grouped_na], ignore_index=True)
@@ -486,13 +483,12 @@ if uploaded_file:
         # SPLIT
         exist_df, old_new = split_existing_and_new(exist_df_raw)
 
-        # 🔥 PROMOTE old_new → jadi EXISTING (tidak hilang)
         if not old_new.empty:
             old_new = old_new.copy()
             old_new["TYPE"] = "EXISTING"
             exist_df = pd.concat([exist_df, old_new], ignore_index=True)
 
-        # Untuk keperluan filter
+        # keperluan filter
         exist_all = exist_df.copy()
         exist_all["KODE_UNIK"] = exist_all["KODE_UNIK"].apply(normalize_kode)
         exist_all["Description"] = exist_all["Description"].astype(str).str.strip()
@@ -504,7 +500,7 @@ if uploaded_file:
         # FILTER
         filtered_new = filter_new_only(exist_all, new_db)
 
-        # GROUPING new
+        # grouping new
         n_normal, n_double, n_na = grouping(filtered_new)
         new_final = pd.concat([n_normal, n_double, n_na], ignore_index=True)
 
